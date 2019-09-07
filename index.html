@@ -1,0 +1,119 @@
+<html>
+
+<head>
+  <title>EM algorithm example</title>
+  <script type="text/javascript" src="em.js"></script>
+  <script type="text/javascript">
+    var myloop = 0, showtab = 0
+    function load() {
+      myloop = 0; showtab = 0;
+      document.getElementById("outtext").innerHTML = "";
+      NUMCLASS = parseInt(document.getElementById("NUMCLASS").value);
+      var intext = document.getElementById("intext").value, lines = intext.split('\n');
+
+      //  First ; set number of classes
+      emalgorithm.initNUMCLASS(NUMCLASS);
+
+      // Second ; create user-item table
+      for (var i in lines) {
+        if (lines[i].charAt() == '#') continue;
+        if (lines[i].length == 0) continue;
+        elements = lines[i].split(",")
+        if (elements.length != 3) continue;
+        emalgorithm.add(elements[0], elements[1], elements[2]);
+      }
+
+      // Third ; initialize variables
+      emalgorithm.initPIcollection();
+      emalgorithm.initW()
+      emalgorithm.initE()
+
+      document.getElementById("b2").disabled = false
+      document.getElementById("b3").disabled = false
+    }
+
+    function computeAll() {
+      MAXLOOP = parseInt(document.getElementById("MAXLOOP").value);
+      COND = parseFloat(document.getElementById("COND").value);
+      var res = emalgorithm.exec(MAXLOOP, COND)
+      showresult(res[0], res[1])
+
+      document.getElementById("b2").disabled = true
+      document.getElementById("b3").disabled = true
+    }
+
+    var likelihood;
+    function computeOnestep() {
+      var oldL = likelihood;
+      likelihood = emalgorithm.Estep();
+      emalgorithm.Mstep();
+      if (oldL)
+        if (Math.abs((likelihood - oldL) / likelihood) < COND) {
+          document.getElementById("b3").disabled = true;
+        }
+      myloop++;
+      showresult(likelihood, myloop);
+    }
+    function showresult(r1, r2) {
+      var c = new Array(emalgorithm.NUMCLASS), group = new Array(emalgorithm.NUMCLASS);
+      for (var i = 0; i < emalgorithm.NUMCLASS; i++) { c[i] = 0; group[i] = new Array(); }
+      emalgorithm.MaxE(c, group)
+
+      var s = "";
+      s += "L=" + r1 + ",loop=" + r2 + "<br>"
+      s += "user distribution<br>"
+      for (var i = 0; i < emalgorithm.NUMCLASS; i++) {
+        s += i + ":" + group[i] + "<br>"
+      }
+      s += mkparam(c, emalgorithm)
+      document.getElementById("outtext").innerHTML = s;
+      changetag(showtab);
+    }
+    function changetag(s) {
+      showtab = s; for (var n = 0; n < emalgorithm.NUMCLASS; n++)document.getElementById("p" + n).style.display = (showtab == n) ? "inline" : "none";
+    }
+
+    function mkparam(c, em) {
+      var items = em.items, PIcollection = em.PIcollection;
+      var nc = em.NUMCLASS, W = em.W;
+      s = "probabilitis of all items<br>";
+      for (var n = 0; n < nc; n++) s += "<a href='javascript:void(0);' onclick='changetag(" + n + ")'>[class=" + n + "]</a>";
+      s += "<br>";
+      for (var n = 0; n < nc; n++) {
+        var de = (c[n] > 0) ? c[n] : 1
+        s += "<div id=p" + n + ">showing class:" + n + "<br>W=" + W[n] / de + "<br><table><tr><th>item</th><th>value</th><th>probability</th></tr>"
+        for (var k in items) {
+          var pi = PIcollection[n][k]; for (var j in pi) s += "<tr><td>" + items[k] + "</td><td>" + j + "</td><td>" + pi[j] + "</td></tr>";
+        }
+        s += "</table></div>";
+      }
+      return s
+    }
+  </script>
+</head>
+
+<body>
+  <form>
+    <textarea id=intext name=t1 rows="10" cols="30">
+#user,item,value
+A,X,o
+B,Y,o
+C,Z,o
+    </textarea>
+  </form>
+  <button id=b1 onclick="load();">Load</button>
+  <br>
+  NUMBER OF CLASS<input style="margin: 10px; width: 50px" ="3" value="3" id="NUMCLASS">
+  <br>
+  CONVERGENCE CONDITION<input style="margin: 10px" size="5" value="1e-6" id="COND">
+  <br>
+  NUMBER OF MAX ITERATION<input  style="margin: 10px" size="3" value="100" id="MAXLOOP">
+  <br>
+  <div>
+    <button id=b2 onclick="computeAll();">Compute All</button>
+    <button id=b3 onclick="computeOnestep();">Compute one Interation</button>
+  </div>
+  <div id=outtext></div>
+</body>
+
+</html>
